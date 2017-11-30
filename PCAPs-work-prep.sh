@@ -50,21 +50,30 @@ if [ "$?" == 0 ]; then
 	done
 fi
 
+## pause to check (comment out if all is fine)
+#echo "echo Pause for a check. Enter to continue." >> PCAPs-work.sh
+#echo "read FAKE" >> PCAPs-work.sh
+
 for i in $(ls -1 $PCAPs|sed 's/\.pcap//'); do
-	# setting up the tshark-streams dir to get working...
-	echo "if [ ! -e  \"${i}_tStreams\" ];  then" >> PCAPs-work.sh
-	echo mkdir ${i}_tStreams >> PCAPs-work.sh
-	echo fi \; >> PCAPs-work.sh
 	# else it works on empty (PCAPs that are not yet started work on can be
 	# removed any time from the dir without nuissance with this outer
 	# condition)
 	echo "if [ -e \"${i}.pcap\" ];  then" >> PCAPs-work.sh
+	# setting up the tshark-streams dir to get working...
+	echo "if [ ! -e  \"${i}_tStreams\" ];  then" >> PCAPs-work.sh
+	echo mkdir ${i}_tStreams >> PCAPs-work.sh
+	echo fi \; >> PCAPs-work.sh
 	echo cd ${i}_tStreams >> PCAPs-work.sh
 	# ...but w/o overwriting (or delete --before its turn-- the ${i}.pcap symlink and
 	# overwrite)
 	echo "if [ ! -e  \"${i}.pcap\" ];  then" >> PCAPs-work.sh
 	echo "ln -s ../$i.pcap" >> PCAPs-work.sh
+	if [ -e "${i}_SSLKEYLOGFILE.txt" ]; then
+	echo ln -s ../${i}_SSLKEYLOGFILE.txt >> PCAPs-work.sh
+	echo tshark-streams.sh -r $i.pcap -k ${i}_SSLKEYLOGFILE.txt >> PCAPs-work.sh
+	else
 	echo tshark-streams.sh -r $i.pcap >> PCAPs-work.sh
+	fi
 	echo fi >> PCAPs-work.sh
 	echo cd \- >> PCAPs-work.sh
 	echo fi >> PCAPs-work.sh
@@ -79,7 +88,12 @@ for i in $(ls -1 $PCAPs|sed 's/\.pcap//'); do
 	# ${i}.pcap symlink to overwrite previous results)
 	echo "if [ ! -e  \"${i}.pcap\" ];  then" >> PCAPs-work.sh
 	echo "ln -s ../$i.pcap" >> PCAPs-work.sh
+	if [ -e "${i}_SSLKEYLOGFILE.txt" ]; then
+	echo ln -s ../${i}_SSLKEYLOGFILE.txt >> PCAPs-work.sh
+	echo tshark-hosts-conv.sh -r $i.pcap -k ${i}_SSLKEYLOGFILE.txt >> PCAPs-work.sh
+	else
 	echo tshark-hosts-conv.sh -r $i.pcap >> PCAPs-work.sh
+	fi
 	echo fi >> PCAPs-work.sh
 	echo cd \- >> PCAPs-work.sh
 	echo fi >> PCAPs-work.sh
