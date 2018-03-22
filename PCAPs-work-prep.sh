@@ -15,7 +15,14 @@ function ask()	# this function borrowed from "Advanced BASH Scripting Guide"
 	esac
 }
 
+#echo \$1: $1
+#read FAKE
 PCAPs=$1
+echo \$PCAPs: $PCAPs
+#read FAKE
+#PCAPs_tr=$(ls -1 $1 | tr '\012' ' ')
+#echo $PCAPs_tr
+#read FAKE
 
 if [ -e "PCAPs-work.sh" ]; then
 	mv -iv PCAPs-work.sh PCAPs-work.sh_$(date +%s)
@@ -24,18 +31,13 @@ else
 	> PCAPs-work.sh
 fi
 
-echo "For the PCAPs you gave:"
-echo "$1"
-echo "issue:"
+echo "For the PCAPs of your $1, issue:"
 echo "touch .tshark-hosts-conv_non-interactive"
-echo "in the related dirs that we'll create?"
+echo "in the related dirs?"
 echo "( else, don't go anywhere, and keep replying"
 echo "to:"
 echo "*tshark-hosts-conv*"
 echo "querying you over options... )"
-# else while you're watching how the script fares, issue a touch
-# .tshark-hosts-conv_non-interactive before this script chdir into the dir in
-# question
 ask
 if [ "$?" == 0 ]; then
 	for i in $(ls -1 $PCAPs|sed 's/\.pcap//'); do
@@ -43,12 +45,20 @@ if [ "$?" == 0 ]; then
 		echo mkdir ${i}_tHostsConv >> PCAPs-work.sh
 		echo cd ${i}_tHostsConv >> PCAPs-work.sh
 		echo touch .tshark-hosts-conv_non-interactive >> PCAPs-work.sh
-		echo fi >> PCAPs-work.sh
 		echo cd \- >> PCAPs-work.sh
+		echo fi >> PCAPs-work.sh
 	done
 fi
 
+## pause to check (comment out if all is fine)
+#echo "echo Pause for a check. Enter to continue." >> PCAPs-work.sh
+#echo "read FAKE" >> PCAPs-work.sh
+
 for i in $(ls -1 $PCAPs|sed 's/\.pcap//'); do
+	# else it works on empty (PCAPs that are not yet started work on can be
+	# removed any time from the dir without nuissance with this outer
+	# condition)
+	echo "if [ -e \"${i}.pcap\" ];  then" >> PCAPs-work.sh
 	# setting up the tshark-streams dir to get working...
 	echo "if [ ! -e  \"${i}_tStreams\" ];  then" >> PCAPs-work.sh
 	echo mkdir ${i}_tStreams >> PCAPs-work.sh
@@ -58,23 +68,36 @@ for i in $(ls -1 $PCAPs|sed 's/\.pcap//'); do
 	# overwrite)
 	echo "if [ ! -e  \"${i}.pcap\" ];  then" >> PCAPs-work.sh
 	echo "ln -s ../$i.pcap" >> PCAPs-work.sh
+	if [ -e "${i}_SSLKEYLOGFILE.txt" ]; then
+	echo ln -s ../${i}_SSLKEYLOGFILE.txt >> PCAPs-work.sh
+	echo tshark-streams.sh -r $i.pcap -k ${i}_SSLKEYLOGFILE.txt >> PCAPs-work.sh
+	else
 	echo tshark-streams.sh -r $i.pcap >> PCAPs-work.sh
+	fi
 	echo fi >> PCAPs-work.sh
 	echo cd \- >> PCAPs-work.sh
+	echo fi >> PCAPs-work.sh
 	# setting up the tshark-streams dir to get working...
-	echo "if [ ! -e  \"${i}_tHostsConv\" ];  then" >> PCAPs-work.sh
+	# without -e $i.pcap it would run on empty (see similar condition for
+	# tStreams above)...
+	echo "if [ ! -e  \"${i}_tHostsConv\" ] && [ -e \"${i}.pcap\" ];  then" >> PCAPs-work.sh
 	echo mkdir ${i}_tHostsConv >> PCAPs-work.sh
 	echo fi >> PCAPs-work.sh
-	echo cd ${i}_tHostsConv >> PCAPs-work.sh
-	# ...but w/o overwriting (or delete --before its turn-- the ${i}.pcap symlink and
-	# overwrite)
+	echo "if [ -e \"${i}.pcap\" ];  then cd ${i}_tHostsConv" >> PCAPs-work.sh
+	# ...but w/o overwriting (or you could deliberately delete --before its turn-- the
+	# ${i}.pcap symlink to overwrite previous results)
 	echo "if [ ! -e  \"${i}.pcap\" ];  then" >> PCAPs-work.sh
 	echo "ln -s ../$i.pcap" >> PCAPs-work.sh
+	if [ -e "${i}_SSLKEYLOGFILE.txt" ]; then
+	echo ln -s ../${i}_SSLKEYLOGFILE.txt >> PCAPs-work.sh
+	echo tshark-hosts-conv.sh -r $i.pcap -k ${i}_SSLKEYLOGFILE.txt >> PCAPs-work.sh
+	else
 	echo tshark-hosts-conv.sh -r $i.pcap >> PCAPs-work.sh
+	fi
 	echo fi >> PCAPs-work.sh
 	echo cd \- >> PCAPs-work.sh
-	# If I get tshark-hosts-conv to run non-interactively (likely soon if it isn't done
-	# already), the PCAPs-work.sh can be run multiple instances in same directory where
-	# you place your PCAPs.
+	echo fi >> PCAPs-work.sh
+	# tshark-hosts-conv can run non-interactively and PCAPs-work.sh can be run
+	# multiple instances in same directory where you place your PCAPs.
 done
 chmod 755 PCAPs-work.sh
