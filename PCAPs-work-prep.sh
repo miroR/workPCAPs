@@ -63,6 +63,10 @@ for i in $(ls -1 $PCAPs|sed 's/\.pcap//'); do
 	echo "if [ ! -e  \"${i}_tStreams\" ];  then" >> PCAPs-work.sh
 	echo mkdir ${i}_tStreams >> PCAPs-work.sh
 	echo fi \; >> PCAPs-work.sh
+	# else it works on empty (PCAPs that are not yet started work on can be
+	# removed any time from the dir without nuissance with this outer
+	# condition)
+	echo "if [ -e \"${i}.pcap\" ];  then" >> PCAPs-work.sh
 	echo cd ${i}_tStreams >> PCAPs-work.sh
 	# ...but w/o overwriting (or delete --before its turn-- the ${i}.pcap symlink and
 	# overwrite)
