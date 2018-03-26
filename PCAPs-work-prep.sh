@@ -43,10 +43,10 @@ if [ "$?" == 0 ]; then
 	for i in $(ls -1 $PCAPs|sed 's/\.pcap//'); do
 		echo "if [ ! -e  \"${i}_tHostsConv\" ];  then" >> PCAPs-work.sh
 		echo mkdir ${i}_tHostsConv >> PCAPs-work.sh
+		echo fi >> PCAPs-work.sh
 		echo cd ${i}_tHostsConv >> PCAPs-work.sh
 		echo touch .tshark-hosts-conv_non-interactive >> PCAPs-work.sh
 		echo cd \- >> PCAPs-work.sh
-		echo fi >> PCAPs-work.sh
 	done
 fi
 
