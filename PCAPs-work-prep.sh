@@ -1,7 +1,10 @@
 #!/bin/bash
 #
 if [ $# -eq 0 ]; then
-	echo "give (a list of) file(s)"
+	echo "give (a list of) PCAP(s)"
+	echo "(if globbing, you need to quote it, e.g.:"
+	echo "PCAPs-work-prep.sh \"*.pcap\")"	# I'm really not an expert to
+											# quickly make this more comfortable
 	exit 0
 fi
 
@@ -25,7 +28,7 @@ echo \$PCAPs: $PCAPs
 #read FAKE
 
 if [ -e "PCAPs-work.sh" ]; then
-	mv -iv PCAPs-work.sh PCAPs-work.sh_$(date +%s)
+	mv -v PCAPs-work.sh PCAPs-work.sh_$(date +%s)
 	> PCAPs-work.sh
 else
 	> PCAPs-work.sh
@@ -71,8 +74,10 @@ for i in $(ls -1 $PCAPs|sed 's/\.pcap//'); do
 	if [ -e "${i}_SSLKEYLOGFILE.txt" ]; then
 	echo ln -s ../${i}_SSLKEYLOGFILE.txt >> PCAPs-work.sh
 	echo tshark-streams.sh -r $i.pcap -k ${i}_SSLKEYLOGFILE.txt >> PCAPs-work.sh
+	echo stream-cont.pl "*.bin" >> PCAPs-work.sh
 	else
 	echo tshark-streams.sh -r $i.pcap >> PCAPs-work.sh
+	echo stream-cont.pl "*.bin" >> PCAPs-work.sh
 	fi
 	echo fi >> PCAPs-work.sh
 	echo cd \- >> PCAPs-work.sh
@@ -101,3 +106,4 @@ for i in $(ls -1 $PCAPs|sed 's/\.pcap//'); do
 	# multiple instances in same directory where you place your PCAPs.
 done
 chmod 755 PCAPs-work.sh
+# vim: set tabstop=4 expandtab:
