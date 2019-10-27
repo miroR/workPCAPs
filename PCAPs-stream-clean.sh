@@ -18,19 +18,19 @@ function ask()	# this function borrowed from "Advanced BASH Scripting Guide"
 
 PCAPs=$1
 echo \$PCAPs: $PCAPs
-read NOOP
+#read NOOP
 PCAPs_tr=$(ls -1 $1 | tr '\012' ' ')
 echo \$PCAPs_tr: $PCAPs_tr
-read NOOP
+#read NOOP
 echo "ls -1 \$PCAPs|sed 's/\.pcap//'"
 echo "ls -1 $PCAPs|sed 's/\.pcap//'"
 ls -1 $PCAPs|sed 's/\.pcap//'
-read NOOP
+#read NOOP
 for i in $(ls -1 $PCAPs|sed 's/\.pcap//'); do
     TMP="$(mktemp -d "/tmp/$i.$$.XXXXXXXX")"
     ls -ld $TMP
     ls -l $TMP
-    read NOOP
+    #read NOOP
     ls -l $i.pcap
 	tshark -r $i.pcap -T fields -e frame.number -e tcp.stream \
 		> $TMP/${i}_fr_no_stream_list
@@ -40,28 +40,28 @@ for i in $(ls -1 $PCAPs|sed 's/\.pcap//'); do
 	head $TMP/${i}_fr_no_stream_list
 	tail $TMP/${i}_fr_no_stream_list
 	echo "(ls -l $TMP/${i}_fr_no_stream_list)"
-    read NOOP
+    #read NOOP
 	tshark -r $i.pcap -T fields -e frame.number -e tcp.stream \
-		| awk '{ print $2 }' > $TMP/${i}_streams_list
+		| awk '{ print $2 }' | grep '[[:print:]]' > $TMP/${i}_streams_list
 	# debug 6 lines
 	echo "ls -l $TMP/${i}_streams_list"
 	ls -l $TMP/${i}_streams_list
 	head $TMP/${i}_streams_list
 	tail $TMP/${i}_streams_list
 	echo "(ls -l $TMP/${i}_streams_list)"
-    read NOOP
+    #read NOOP
 	# Now sort that \${i}_streams_list
 	str_num_tail_1=$(tail -1 $TMP/${i}_streams_list|sed 's/\012//')
 	echo -n $str_num_tail_1|wc -c
 	str_num_max_len=$(echo -n $str_num_tail_1|wc -c)
 	echo \$str_num_max_len: $str_num_max_len
-    read NOOP
+    #read NOOP
 	str_num_len=1
 	echo \$str_num_len: $str_num_len
 	search_str='[0-9]'
 	echo "\$search_str: $search_str"
 	echo "$search_str"
-    read NOOP
+    #read NOOP
 	> $TMP/${i}_streams_list_sort
 	while [ "$str_num_len" -le "$str_num_max_len" ]; do
 		#for str in $(<$TMP/${i}_streams_list); do
@@ -72,24 +72,24 @@ for i in $(ls -1 $PCAPs|sed 's/\.pcap//'); do
 		head $TMP/${i}_streams_list_sort
 		tail $TMP/${i}_streams_list_sort
 		echo "(ls -l $TMP/${i}_streams_list_sort)"
-        read NOOP
+        #read NOOP
 		#done
 		let str_num_len+=1
 		echo \$str_num_len: $str_num_len
 		echo "echo \${search_str}[0-9]"
-    	read NOOP
+    	#read NOOP
 		search_str=$(echo ${search_str}[0-9])
 		echo \$search_str: $search_str
-    	read NOOP
+    	#read NOOP
 	done
-    read NOOP
+    #read NOOP
 	> $TMP/${i}_fr_no_stream_list_sort
 	for stream in $(cat $TMP/${i}_streams_list_sort); do
 		# debug
 		#echo \$stream: $stream; ls -l $TMP/${i}_fr_no_stream_list
 		grep "\<$stream$" $TMP/${i}_fr_no_stream_list \
 			>> $TMP/${i}_fr_no_stream_list_sort
-		#read NOOP
+		##read NOOP
 	done; 
 	# debug 6 lines
 	echo "ls -l $TMP/${i}_fr_no_stream_list_sort"
@@ -97,9 +97,16 @@ for i in $(ls -1 $PCAPs|sed 's/\.pcap//'); do
 	head $TMP/${i}_fr_no_stream_list_sort
 	tail $TMP/${i}_fr_no_stream_list_sort
 	echo "(ls -l $TMP/${i}_streams_list_sort)"
-    read NOOP
+    #read NOOP
+	if ( grep "^[0-9]" "${i}_str_fr_list" ); then
 	if [ -e "${i}_str_fr_list" ]; then
 		mv -iv ${i}_str_fr_list ${i}_str_fr_list.$(date +%s)
+	else
+		ls -l ${i}_str_fr_list
+		cat ${i}_str_fr_list
+		echo "(cat ${i}_str_fr_list)"
+		rm -v ${i}_str_fr_list
+	fi
 	fi
 cat > ${i}_str_fr_list <<EOF
 # These packets all belong to streams that have no more than 2 packets each
@@ -108,10 +115,10 @@ EOF
 	for stream in $(<$TMP/${i}_streams_list_sort); do
 		echo \"$stream\"
 		cat $TMP/${i}_fr_no_stream_list_sort | awk '{ print $2 }' | grep "^$stream\>"
-    	read NOOP
+    	#read NOOP
 		str_cnt=$(cat $TMP/${i}_fr_no_stream_list_sort | awk '{ print $2 }' | grep "^$stream\>"|wc -l)
 		echo \$str_cnt: $str_cnt
-    	read NOOP
+    	#read NOOP
 		if [ "$str_cnt" -le "2" ]; then
 			str_fr=$(cat $TMP/${i}_fr_no_stream_list_sort | grep "[[:space:]]$stream\>" | awk '{ print $1 }')
 			echo \$str_fr: $str_fr
@@ -120,13 +127,16 @@ EOF
 	done
 	echo "Done:"
     ls -l $i.pcap
-    read NOOP
+    #read NOOP
     trap "rm -rf $TMP/" EXIT INT TERM
     export TMP
     rm -rf $TMP/
 done
 ls -l $TMP
-read NOOP
+#read NOOP
 trap "rm -rf $TMP/" EXIT INT TERM
 
+# The second part. Make the PCAP with only ${i}_str_fr_list packets, and the
+# (desperately needed) one without. Then, if the mergecap'ing them returns the
+# original correctly, the work has tested correct.
 # vim: set tabstop=4 expandtab:
