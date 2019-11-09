@@ -16,33 +16,59 @@ function ask()    # this function borrowed from "Advanced BASH Scripting Guide"
     esac
 }
 
+WIRESHARK_RUN_FROM_BUILD_DIRECTORY=1
+TSHARK=/Cmn/git/wireshark.d/wireshark-ninja/run/tshark
+EDITCAP=/Cmn/git/wireshark.d/wireshark-ninja/run/editcap
+MERGECAP=/Cmn/git/wireshark.d/wireshark-ninja/run/mergecap
+CAPINFOS=/Cmn/git/wireshark.d/wireshark-ninja/run/capinfos
+
 PCAPs=$1
-echo \$PCAPs: $PCAPs
+echo \$PCAPs: $PCAPs|grep -v "_rm-\|rm.pcap\|_tmp.pcap"
 #read NOOP
-PCAPs_tr=$(ls -1 $1 | tr '\012' ' ')
+PCAPs_tr=$(ls -1 $1|grep -v "_rm-\|rm.pcap\|_tmp.pcap" | tr '\012' ' ')
 echo \$PCAPs_tr: $PCAPs_tr
 #read NOOP
-echo "ls -1 \$PCAPs|sed 's/\.pcap//'"
-echo "ls -1 $PCAPs|sed 's/\.pcap//'"
-ls -1 $PCAPs|sed 's/\.pcap//'
+echo "ls -1 \$PCAPs|sed 's/\.pcap//'|grep -v \"_rm-\|rm.pcap\|_tmp.pcap\""
+echo "ls -1 $PCAPs|sed 's/\.pcap//'|grep -v \"_rm-\|rm.pcap\|_tmp.pcap\""
 read NOOP
-for i in $(ls -1 $PCAPs|sed 's/\.pcap//'); do
-    if ( grep "^[0-9]" "${i}_str_fr_list" ); then
-        echo "The $i.pcap seems to have been already processed:"
-        ls -l $i.pcap
+ls -1 $PCAPs|grep -v "_rm-\|rm.pcap\|_tmp.pcap"|sed 's/\.pcap//'
+read NOOP
+echo "=-=-=-=-=-=-=-=-=-=-=-= the first part: -=-=-=-=-=-=-==-=-=-=-="
+echo "==   creating the list of no-content tcp.streams, per PCAP  ==="
+echo "=-=-=-=-=-=-=-=-=-=-=-= (the first part) =-=-=-=-=-=-==-=-=-=-="
+read NOOP
+
+for i in $(ls -1 $PCAPs|grep -v "_rm-\|rm.pcap\|_tmp.pcap"|sed 's/\.pcap//'); do
+    if [ -e "${i}_str_fr_list" ]; then
         ls -l ${i}_str_fr_list
-        echo "NOTE: It is the user's responsability to keep their archives in order."
-        echo "(If the ${i}_str_fr_list is not correct, pls. remove it and rerun $0.)"
-        echo "[ sleep 1 ]"
-        sleep 1
-        continue
+        grep -v '^#' ${i}_str_fr_list > ${i}_str_fr_list_r
+        if ( grep -q "^[0-9]" "${i}_str_fr_list_r" ); then
+            echo "The $i.pcap seems to have been already processed:"
+            ls -l $i.pcap
+            echo "[ sleep 1 ]"
+            sleep 1
+            continue
+        else
+            # Case here is PCAP has none no-content tcp.stream, i.e.
+            if [ ! -s "${i}_str_fr_list_r" ]; then
+                ls -l $i.pcap
+                echo "likely has none no-content streams." 
+                read NOOP
+                continue
+            else
+                echo "NOTE: It is the user's responsability to keep their archives in order."
+                echo "The ${i}_str_fr_list may not be correct."
+                echo "Maybe remove it and rerun/fix $0.)"
+            fi
+        fi
     fi
     TMP="$(mktemp -d "/tmp/$i.$$.XXXXXXXX")"
     ls -ld $TMP
     ls -l $TMP
     #read NOOP
+
     ls -l $i.pcap
-    tshark -r $i.pcap -T fields -e frame.number -e tcp.stream \
+    $TSHARK -r $i.pcap -T fields -e frame.number -e tcp.stream \
         > $TMP/${i}_fr_no_stream_list
     # debug 6 lines
     echo "ls -l $TMP/${i}_fr_no_stream_list"
@@ -51,7 +77,7 @@ for i in $(ls -1 $PCAPs|sed 's/\.pcap//'); do
     tail $TMP/${i}_fr_no_stream_list
     echo "(ls -l $TMP/${i}_fr_no_stream_list)"
     #read NOOP
-    tshark -r $i.pcap -T fields -e frame.number -e tcp.stream \
+    $TSHARK -r $i.pcap -T fields -e frame.number -e tcp.stream \
         | awk '{ print $2 }' | grep '[[:print:]]' > $TMP/${i}_streams_list
     # debug 6 lines
     echo "ls -l $TMP/${i}_streams_list"
@@ -143,17 +169,78 @@ EOF
         rm -rf $TMP/
     fi
 done
-if [ -e "$TMP/" ]; then
+# this if cond from /usr/bin/startx
+if [ x"$TMP" = x ]; then
+    echo "\$TMP is empty"
+else
     ls -l $TMP
-    read NOOP
     trap "rm -rf $TMP/" EXIT INT TERM
 fi
-
-echo; echo \$PCAPs: $PCAPs; echo
 read NOOP
-for i in $(ls -1 $PCAPs|sed 's/\.pcap//'); do
+
+# produces no output, why? I thought at least the initial "echo \$PCAPs show've been seen"
+echo; echo \$PCAPs: $PCAPs|grep -v "_rm-\|rm.pcap\|_tmp.pcap"; echo
+read NOOP
+# we still have $1?
+echo \$1: $1
+read NOOP
+PCAPs=$1
+echo \$PCAPs: $PCAPs|grep -v "_rm-\|rm.pcap\|_tmp.pcap"
+#read NOOP
+PCAPs_tr=$(ls -1 $1|grep -v "_rm-\|rm.pcap\|_tmp.pcap" | tr '\012' ' ')
+echo \$PCAPs_tr: $PCAPs_tr
+#read NOOP
+echo "ls -1 \$PCAPs|sed 's/\.pcap//'|grep -v \"_rm-\|rm.pcap\|_tmp.pcap\""
+echo "ls -1 $PCAPs|sed 's/\.pcap//'|grep -v \"_rm-\|rm.pcap\|_tmp.pcap\""
+read NOOP
+ls -1 $PCAPs|grep -v "_rm-\|rm.pcap\|_tmp.pcap"|sed 's/\.pcap//'
+read NOOP
+echo "=-=-=-=-=-=-=-=-=-=-=-=-=- the second part: -=-=-=-=-=-=-=-=-=-=-=-=-="
+echo "==  creating \${i}_ok\${index}.pcap without no-content tcp.streams  =="
+echo "==      and \${i}_rm\${index}.pcap with no-content tcp.streams      =="
+echo "=-=-=-=-=-=-=-=-=-=-=-=-=- (the second part) =-=-=-=-=-=-=-=-=-=-=-=-="
+read NOOP
+for i in $(ls -1 $PCAPs|grep -v "_rm-\|rm.pcap\|_tmp.pcap"|sed 's/\.pcap//'); do
     ls -l $i.pcap
+    # Miserably pasting over this if cond.
     read NOOP
+    if [ -e "${i}_str_fr_list" ]; then
+        ls -l ${i}_str_fr_list
+        grep -v '^#' ${i}_str_fr_list > ${i}_str_fr_list_r
+        if ! ( grep -q "^[0-9]" "${i}_str_fr_list_r" ); then
+            # Case here is PCAP has none no-content tcp.stream, i.e.
+            if [ ! -s "${i}_str_fr_list_r" ]; then
+                ls -l $i.pcap
+                echo "likely has none no-content streams." 
+                read NOOP
+                continue
+            fi
+        fi
+    fi
+    if [ -e "${i}_rm.pcap" ]; then
+        ask "anew?" ;
+        if [ "$?" == 0 ]; then
+            echo "Fine, we'll be processing ${i}.pcap (all over)"
+            echo "and merging ${i}_rm.pcap (again)."
+            echo "(but you may be asked one more time,"
+            echo "and there might be some overwriting to confirm)"
+        else
+            echo "User declined to process $i.pcap and merge ${i}_rm.pcap (again)." 
+            continue
+        fi
+        read NOOP
+    fi
+    if [ -e "$i.pcap.O" ]; then
+        ask "anew?" ;
+        if [ "$?" == 0 ]; then
+            echo "Fine, we'll be doing $i.pcap (all over) next."
+            mv -iv $i.pcap.O $i.pcap
+        else
+            echo "User declined to re-work $i.pcap"
+            continue
+        fi
+        read NOOP
+    fi
     # The second part. editcap the PCAP to make another with only ${i}_str_fr_list
     # packets, and the (desperately needed) one without. Then, if the mergecap'ing
     # them returns the original correctly, the work has tested correct.
@@ -171,23 +258,23 @@ for i in $(ls -1 $PCAPs|sed 's/\.pcap//'); do
     #read NOOP
     index=-1
     # We need to keep two versions:
-    cat ${i}_str_fr_list_r > str_fr_list_r_tmp_lines
-    cat ${i}_str_fr_list_r | tr '\012' ' ' > str_fr_list_r_tmp
+    cat ${i}_str_fr_list_r > ${i}_str_fr_list_r_tmp_lines
+    cat ${i}_str_fr_list_r | tr '\012' ' ' > ${i}_str_fr_list_r_tmp
     cp -av  ${i}.pcap ${i}_tmp.pcap
     read NOOP
-    while [ -s "str_fr_list_r_tmp" ]; do
-        echo "ls -l str_fr_list_r_tmp"
-        ls -l str_fr_list_r_tmp
-        echo "head -c50 str_fr_list_r_tmp"
-        head -c50 str_fr_list_r_tmp; echo
-        echo "tail -c50 str_fr_list_r_tmp"
-        tail -c50 str_fr_list_r_tmp; echo
-        echo "(ls -l str_fr_list_r_tmp)"
+    while [ -s "${i}_str_fr_list_r_tmp" ]; do
+        echo "ls -l ${i}_str_fr_list_r_tmp"
+        ls -l ${i}_str_fr_list_r_tmp
+        echo "head -c100 ${i}_str_fr_list_r_tmp"
+        head -c100 ${i}_str_fr_list_r_tmp; echo
+        echo "tail -c50 ${i}_str_fr_list_r_tmp"
+        tail -c50 ${i}_str_fr_list_r_tmp; echo
+        echo "(ls -l ${i}_str_fr_list_r_tmp)"
         read NOOP
-        tail -200 str_fr_list_r_tmp_lines > ${i}_str_fr_list_r${index}_lines
-        tail -200 str_fr_list_r_tmp_lines | tr '\012' ' ' > ${i}_str_fr_list_r${index}
+        tail -200 ${i}_str_fr_list_r_tmp_lines > ${i}_str_fr_list_r${index}_lines
+        tail -200 ${i}_str_fr_list_r_tmp_lines | tr '\012' ' ' > ${i}_str_fr_list_r${index}
 
-        echo -n "editcap -r ${i}_tmp.pcap ${i}_rm${index}.pcap " > ${i}_CMD_rm${index}
+        echo -n "$EDITCAP -r ${i}_tmp.pcap ${i}_rm${index}.pcap " > ${i}_CMD_rm${index}
         echo "cat ${i}_CMD_rm${index}"
         cat ${i}_CMD_rm${index}
         read NOOP
@@ -195,17 +282,16 @@ for i in $(ls -1 $PCAPs|sed 's/\.pcap//'); do
         chmod 755 ${i}_CMD_rm${index}
         echo "ls -l ${i}_CMD_rm${index}"
         ls -l ${i}_CMD_rm${index}
-        echo "head -c50 ${i}_CMD_rm${index}"
-        head -c50 ${i}_CMD_rm${index}; echo
+        echo "head -c100 ${i}_CMD_rm${index}"
+        head -c100 ${i}_CMD_rm${index}; echo
         echo "tail -c50 ${i}_CMD_rm${index}"
         tail -c50 ${i}_CMD_rm${index}; echo
-        read NOOP
         read NOOP
         ./${i}_CMD_rm${index}
         ls -l ${i}_tmp.pcap ${i}_rm${index}.pcap
         read NOOP
 
-        echo -n "editcap ${i}_tmp.pcap ${i}_ok${index}.pcap " > ${i}_CMD_ok${index}
+        echo -n "$EDITCAP ${i}_tmp.pcap ${i}_ok${index}.pcap " > ${i}_CMD_ok${index}
         echo "cat ${i}_CMD_ok${index}"
         cat ${i}_CMD_ok${index}
         read NOOP
@@ -218,14 +304,75 @@ for i in $(ls -1 $PCAPs|sed 's/\.pcap//'); do
         index=$(echo $index-1|bc)
         echo \$index: $index
         read NOOP
-        head -n-200 str_fr_list_r_tmp_lines > str_fr_list_r_tmp_r_lines
-        ls -l  str_fr_list_r_tmp_lines str_fr_list_r_tmp_r_lines
-        cat str_fr_list_r_tmp_r_lines | tr '\012' ' ' > str_fr_list_r_tmp_r
+        head -n-200 ${i}_str_fr_list_r_tmp_lines > ${i}_str_fr_list_r_tmp_r_lines
+        ls -l  ${i}_str_fr_list_r_tmp_lines ${i}_str_fr_list_r_tmp_r_lines
+        cat ${i}_str_fr_list_r_tmp_r_lines | tr '\012' ' ' > ${i}_str_fr_list_r_tmp_r
         read NOOP
-        mv -v str_fr_list_r_tmp_r_lines str_fr_list_r_tmp_lines
-        mv -v str_fr_list_r_tmp_r str_fr_list_r_tmp
+        mv -v ${i}_str_fr_list_r_tmp_r_lines ${i}_str_fr_list_r_tmp_lines
+        mv -v ${i}_str_fr_list_r_tmp_r ${i}_str_fr_list_r_tmp
         read NOOP
     done
+    mv -iv  ${i}.pcap ${i}.pcap.O
+    mv -iv  ${i}_tmp.pcap ${i}.pcap
+    ls -1tr ${i}_rm-*.pcap
+    echo -n "$MERGECAP " > ${i}_merge_rm_CMD.sh
+    echo -n "-w ${i}_rm.pcap " >> ${i}_merge_rm_CMD.sh
+    ls -1tr ${i}_rm-*.pcap | sed 's/\.pcap//' | sed 's/\(.*\)/\1.pcap \\/' >> \
+        ${i}_merge_rm_CMD.sh
+        echo ";" >> ${i}_merge_rm_CMD.sh
+    chmod 755 ${i}_merge_rm_CMD.sh
+    read NOOP
+    ./${i}_merge_rm_CMD.sh
+    echo -n "$MERGECAP " > ${i}_merge_CMD.sh
+    echo -n "-w ${i}.pcap.RE ${i}_rm.pcap ${i}.pcap " >> ${i}_merge_CMD.sh
+    chmod 755 ${i}_merge_CMD.sh
+    read NOOP
+    ./${i}_merge_CMD.sh
+    echo "=-=-=-=-=-=-=-=-=-=-=-=-=- verifying and cleaning: -=-=-=-=-=-=-=-=-=-=-=-=-="
+    read NOOP
+    $CAPINFOS $i.pcap.RE \
+        | grep 'Number of packets = \|Capture duration:\|First packet time:\|Last packet time:'\
+        > $i.pcap.RE_test
+    $CAPINFOS $i.pcap.O \
+        | grep 'Number of packets = \|Capture duration:\|First packet time:\|Last packet time:'\
+        > $i.pcap.O_test
+    echo "capinfos $i.pcap.O_test\|grep ..."
+    cat $i.pcap.O_test
+    read NOOP
+    echo "capinfos $i.pcap.RE_test\|grep ..."
+    cat $i.pcap.RE_test
+    read NOOP
+    if ( diff $i.pcap.O_test $i.pcap.RE_test ); then
+        echo "There have been no loss of packets in this $i.pcap carving: "
+        echo "capinfos $i.pcap.O (the original): "
+        echo "capinfos $i.pcap.RE (the re-merged from"
+        echo "   without no-content tcp.streams, the new renamed"
+        ls -l $i.pcap
+        echo "  and the"
+        ls -l ${i}_rm.pcap
+        echo "  all-no-content tcp.streams)"
+        echo "Removing all the temps:"
+        rm -v ${i}_str_fr_list_*
+        rm -v ${i}_rm-*.pcap
+        rm -v ${i}_merge_rm_CMD.sh ${i}_merge_CMD.sh ${i}_CMD*
+        rm -v $i.pcap.O_test $i.pcap.RE_test
+        rm -v $i.pcap.RE
+    else
+        echo "There has been loss of packets (or other error) in this $i.pcap carving: "
+        echo "The $i.pcap.O (the original): "
+        echo "and the $i.pcap.RE (the re-merged for verification"
+        echo "do not correspond."
+        echo "Pls. study the temps now."
+        read NOOP
+        ask "Remove all the temps now?"
+        if [ "$?" == 0 ]; then
+            rm -v ${i}_str_fr_list_*
+            rm -v ${i}_rm-*.pcap
+            rm -v ${i}_merge_rm_CMD.sh ${i}_merge_CMD.sh ${i}_CMD*
+            rm -v $i.pcap.O_test $i.pcap.RE_test
+            rm -v $i.pcap.RE
+        fi
+    fi
 done
 
 # vim: set tabstop=4 expandtab:
