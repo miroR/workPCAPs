@@ -77,7 +77,7 @@ for i in $(ls -1 $PCAPs|sed 's/\.pcap//'); do
     if [ -e "${i}_SSLKEYLOGFILE.txt" ]; then
     echo ln -s ../${i}_SSLKEYLOGFILE.txt >> PCAPs-work.sh
     echo tshark-streams.sh -r $i.pcap -k ${i}_SSLKEYLOGFILE.txt >> PCAPs-work.sh
-    echo "tshark -ossl.keylog_file:${i}_SSLKEYLOGFILE.txt -r $i.pcap -q --export-object http,files" >> PCAPs-work.sh
+    echo "tshark -otls.keylog_file:${i}_SSLKEYLOGFILE.txt -r $i.pcap -q --export-object http,files" >> PCAPs-work.sh
     echo "mv -iv files ../${i}_files" >> PCAPs-work.sh
     else
     echo tshark-streams.sh -r $i.pcap >> PCAPs-work.sh

@@ -16,11 +16,15 @@ function ask()    # this function borrowed from "Advanced BASH Scripting Guide"
     esac
 }
 
-WIRESHARK_RUN_FROM_BUILD_DIRECTORY=1
-TSHARK=/Cmn/git/wireshark.d/wireshark-ninja/run/tshark
-EDITCAP=/Cmn/git/wireshark.d/wireshark-ninja/run/editcap
-MERGECAP=/Cmn/git/wireshark.d/wireshark-ninja/run/mergecap
-CAPINFOS=/Cmn/git/wireshark.d/wireshark-ninja/run/capinfos
+# Used to be (5 ln):
+#WIRESHARK_RUN_FROM_BUILD_DIRECTORY=1
+#TSHARK=/Cmn/git/wireshark.d/wireshark-ninja/run/tshark
+#EDITCAP=/Cmn/git/wireshark.d/wireshark-ninja/run/editcap
+#MERGECAP=/Cmn/git/wireshark.d/wireshark-ninja/run/mergecap
+#CAPINFOS=/Cmn/git/wireshark.d/wireshark-ninja/run/capinfos
+# Replacing it with:
+. shark2use
+#read NOOP
 
 PCAPs=$1
 echo \$PCAPs: $PCAPs|grep -v "_rm-\|rm.pcap\|_tmp.pcap"
@@ -65,7 +69,7 @@ for i in $(ls -1 $PCAPs|grep -v "_rm-\|rm.pcap\|_tmp.pcap"|sed 's/\.pcap//'); do
     TMP="$(mktemp -d "/tmp/$i.$$.XXXXXXXX")"
     ls -ld $TMP
     ls -l $TMP
-    #read NOOP
+    read NOOP
 
     ls -l $i.pcap
     $TSHARK -r $i.pcap -T fields -e frame.number -e tcp.stream \
@@ -85,19 +89,33 @@ for i in $(ls -1 $PCAPs|grep -v "_rm-\|rm.pcap\|_tmp.pcap"|sed 's/\.pcap//'); do
     head $TMP/${i}_streams_list
     tail $TMP/${i}_streams_list
     echo "(ls -l $TMP/${i}_streams_list)"
-    #read NOOP
+    echo "Next: \"Now sort that \${i}_streams_list\""
+    read NOOP
+    # Needed to really get the largest in tail:
+    unset greatest
+    for stream in $(<$TMP/${i}_streams_list); do
+        if [ -n "$greatest" ]; then
+            if [ "$stream" -gt "$greatest" ]; then
+                greatest=$stream
+            fi
+        else
+            greatest=$stream
+        fi
+    done
+    echo \$greatest: $greatest
+    read NOOP
     # Now sort that \${i}_streams_list
-    str_num_tail_1=$(tail -1 $TMP/${i}_streams_list|sed 's/\012//')
-    echo -n $str_num_tail_1|wc -c
-    str_num_max_len=$(echo -n $str_num_tail_1|wc -c)
+    #str_num_tail_1=$(tail -1 $TMP/${i}_streams_list_TMP_SORT|sed 's/\012//')
+    echo -n $greatest|wc -c
+    str_num_max_len=$(echo -n $greatest|wc -c)
     echo \$str_num_max_len: $str_num_max_len
-    #read NOOP
+    read NOOP
     str_num_len=1
     echo \$str_num_len: $str_num_len
     search_str='[0-9]'
     echo "\$search_str: $search_str"
     echo "$search_str"
-    #read NOOP
+    read NOOP
     > $TMP/${i}_streams_list_sort
     while [ "$str_num_len" -le "$str_num_max_len" ]; do
         #for str in $(<$TMP/${i}_streams_list); do
@@ -108,8 +126,6 @@ for i in $(ls -1 $PCAPs|grep -v "_rm-\|rm.pcap\|_tmp.pcap"|sed 's/\.pcap//'); do
         head $TMP/${i}_streams_list_sort
         tail $TMP/${i}_streams_list_sort
         echo "(ls -l $TMP/${i}_streams_list_sort)"
-        #read NOOP
-        #done
         let str_num_len+=1
         echo \$str_num_len: $str_num_len
         echo "echo \${search_str}[0-9]"
@@ -146,6 +162,8 @@ cat > ${i}_str_fr_list <<EOF
 # These packets all belong to streams that have no more than 2 packets each
 # When removed from their PCAP, easier the work.
 EOF
+		echo "temp NOTE --DELETE THIS AFTERWARDS-- modify $TMP/${i}_fr_no_stream_list_sort NOW"
+        read NOOP
     for stream in $(<$TMP/${i}_streams_list_sort); do
         echo \"$stream\"
         cat $TMP/${i}_fr_no_stream_list_sort | awk '{ print $2 }' | grep "^$stream\>"
@@ -163,11 +181,11 @@ EOF
     ls -l $i.pcap
     read NOOP
 
-    trap "rm -rf $TMP/" EXIT INT TERM
-    export TMP
-    if [ -e "$TMP/" ]; then
-        rm -rf $TMP/
-    fi
+    #trap "rm -rf $TMP/" EXIT INT TERM
+    #export TMP
+    #if [ -e "$TMP/" ]; then
+    #    rm -rf $TMP/
+    #fi
 done
 # this if cond from /usr/bin/startx
 if [ x"$TMP" = x ]; then
@@ -186,10 +204,10 @@ echo \$1: $1
 read NOOP
 PCAPs=$1
 echo \$PCAPs: $PCAPs|grep -v "_rm-\|rm.pcap\|_tmp.pcap"
-#read NOOP
+read NOOP
 PCAPs_tr=$(ls -1 $1|grep -v "_rm-\|rm.pcap\|_tmp.pcap" | tr '\012' ' ')
 echo \$PCAPs_tr: $PCAPs_tr
-#read NOOP
+read NOOP
 echo "ls -1 \$PCAPs|sed 's/\.pcap//'|grep -v \"_rm-\|rm.pcap\|_tmp.pcap\""
 echo "ls -1 $PCAPs|sed 's/\.pcap//'|grep -v \"_rm-\|rm.pcap\|_tmp.pcap\""
 read NOOP

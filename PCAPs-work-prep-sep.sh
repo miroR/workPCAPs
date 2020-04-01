@@ -52,6 +52,13 @@ done
 #echo "#(just leave the top --where read the note-- and bottom as is)" |& tee -a PCAPs-work.sh
 #read FAKE_permanent
 
+ask "Manually choose, wireshark from compile dir (y) or distro wireshark (n, just hit Enter)"
+if [ "$?" == 0 ]; then
+    echo "WIRESHARK_RUN_FROM_BUILD_DIRECTORY=1" >> PCAPs-work-tS.sh
+    echo "TSHARK=/Cmn/git/wireshark.d/wireshark-ninja/run/tshark" >> PCAPs-work-tS.sh
+else
+    echo "TSHARK=$(which tshark)" >> PCAPs-work-tS.sh
+fi
 
 # Split into two possible scripts, i.e. first only tStreams blocks, then only
 # tHostsConv blocks. It's important that these be separated, see comment at the
@@ -60,6 +67,8 @@ for i in $(ls -1 $PCAPs|sed 's/\.pcap//'); do
     # else it works on empty (PCAPs that are not yet started work on can be
     # removed any time from the dir without nuissance with this outer
     # condition)
+    # Tried, but it's more work, different that the include for other scripts:
+    # . shark2use >> PCAPs-work-tS.sh
     echo "if [ -e \"${i}.pcap\" ];  then" >> PCAPs-work-tS.sh
     # setting up the tshark-streams dir to get working...
     echo "if [ ! -e  \"${i}_tStreams\" ];  then" >> PCAPs-work-tS.sh
@@ -73,11 +82,11 @@ for i in $(ls -1 $PCAPs|sed 's/\.pcap//'); do
     if [ -e "${i}_SSLKEYLOGFILE.txt" ]; then
     echo ln -s ../${i}_SSLKEYLOGFILE.txt >> PCAPs-work-tS.sh
     echo tshark-streams.sh -r $i.pcap -k ${i}_SSLKEYLOGFILE.txt >> PCAPs-work-tS.sh
-    echo "tshark -ossl.keylog_file:${i}_SSLKEYLOGFILE.txt -r $i.pcap -q --export-object http,files" >> PCAPs-work-tS.sh
+    echo "\$TSHARK -otls.keylog_file:${i}_SSLKEYLOGFILE.txt -r $i.pcap -q --export-object http,files" >> PCAPs-work-tS.sh
     echo "mv -iv files ../${i}_files" >> PCAPs-work-tS.sh
     else
     echo tshark-streams.sh -r $i.pcap >> PCAPs-work-tS.sh
-    echo "tshark -r $i.pcap -q --export-object http,files" >> PCAPs-work-tS.sh
+    echo "\$TSHARK -r $i.pcap -q --export-object http,files" >> PCAPs-work-tS.sh
     echo "mv -iv files ../${i}_files" >> PCAPs-work-tS.sh
     fi
     echo fi >> PCAPs-work-tS.sh
