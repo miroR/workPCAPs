@@ -12,12 +12,12 @@
 # regular install is missing
 
 TEST_WIRESHARK=$(which wireshark)
-echo \$TEST_WIRESHARK: $TEST_WIRESHARK
+#echo \$TEST_WIRESHARK: $TEST_WIRESHARK
 if [ "X${TEST_WIRESHARK}" == "X" ]; then
     if [ ! -d "$RUN_BUILD_DIR" ]; then
         echo "There is no regular Wireshark install, but"
         echo "  neither you gave \$RUN_BUILD_DIR in /home/$USER/.bashrc"
-        echo "  or \$RUN_BUILD_DIR in not a dir."
+        echo "  or \$RUN_BUILD_DIR is not a dir."
         ls -l $RUN_BUILD_DIR
         echo "(ls -l $RUN_BUILD_DIR)"
         echo "Did you forget to source /home/$USER/.bashrc ?"
@@ -33,34 +33,10 @@ if [ "X${TEST_WIRESHARK}" == "X" ]; then
     EDITCAP=$RUN_BUILD_DIR/editcap
     MERGECAP=$RUN_BUILD_DIR/mergecap
     CAPINFOS=$RUN_BUILD_DIR/capinfos
-    echo \$WIRESHARK: $WIRESHARK
-    echo \$TSHARK: $TSHARK
-    echo \$EDITCAP: $EDITCAP
-    echo \$MERGECAP: $MERGECAP
-    echo \$CAPINFOS: $CAPINFOS
-    ls -l $WIRESHARK
-    ls -l $TSHARK
-    ls -l $EDITCAP
-    ls -l $MERGECAP
-    ls -l $CAPINFOS
-    #export WIRESHARK
-    #export TSHARK
-    #export EDITCAP
-    #export MERGECAP
-    #export CAPINFOS
-    echo "(end of main)"
-    #read NOOP
 else
     WIRESHARK=$(which wireshark)
     TSHARK=$(which tshark)
     EDITCAP=$(which editcap)
     MERGECAP=$(which mergecap)
     CAPINFOS=$(which capinfos)
-    echo \$WIRESHARK: $WIRESHARK
-    echo \$TSHARK: $TSHARK
-    echo \$EDITCAP: $EDITCAP
-    echo \$MERGECAP: $MERGECAP
-    echo \$CAPINFOS: $CAPINFOS
-    echo "(end of else)"
-    #read NOOP
 fi

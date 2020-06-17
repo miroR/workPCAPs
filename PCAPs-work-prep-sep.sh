@@ -4,14 +4,6 @@
 # tcpdump requires entering passphrase too often.
 #
 
-if [ $# -eq 0 ]; then
-    echo "give (a list of) PCAP(s)"
-    echo "(if globbing, you need to quote it, e.g.:"
-    echo "PCAPs-work-prep.sh \"*.pcap\")"    # I'm really not an expert to
-                                            # quickly make this more comfortable
-    exit 0
-fi
-
 function ask()    # this function borrowed from "Advanced BASH Scripting Guide"
                 # (a free book) by Mendel Cooper
 {
@@ -22,14 +14,15 @@ function ask()    # this function borrowed from "Advanced BASH Scripting Guide"
     esac
 }
 
-#echo \$1: $1
-#read FAKE
+if [ $# -eq 0 ]; then
+    echo "give (a list of) PCAP(s)"
+    echo "(if globbing, you need to quote it, e.g.:"
+    echo "${0##*/} \"*.pcap\")"
+    exit 0
+fi
+
 PCAPs=$1
 echo \$PCAPs: $PCAPs
-#read FAKE
-#PCAPs_tr=$(ls -1 $1 | tr '\012' ' ')
-#echo $PCAPs_tr
-#read FAKE
 
 ts=$(date +%s)
 for file in PCAPs-work-tH.sh PCAPs-work-tS.sh ; do
@@ -41,17 +34,6 @@ for file in PCAPs-work-tH.sh PCAPs-work-tS.sh ; do
     fi
 done
 
-# The \$sep that we'll use:
-#sep="=-=-tS-END-=-=-Th-START-=="
-#echo |& tee -a PCAPs-work.sh
-#echo "#The script is primitively split, for (optional) editing." |& tee -a PCAPs-work.sh
-#echo "#Recommended copy/rename the script first," |& tee -a PCAPs-work.sh
-#echo "#say to PCAPs-work-tS.sh or PCAPs-work-tH.sh, as per:" |& tee -a PCAPs-work.sh
-#echo "#to run only tHostsConv part remove (only) the tStreams part," |& tee -a PCAPs-work.sh
-#echo "#or the other way round." |& tee -a PCAPs-work.sh
-#echo "#(just leave the top --where read the note-- and bottom as is)" |& tee -a PCAPs-work.sh
-#read FAKE_permanent
-
 ask "Manually choose, wireshark from compile dir (y) or distro wireshark (n, just hit Enter)"
 if [ "$?" == 0 ]; then
     echo "WIRESHARK_RUN_FROM_BUILD_DIRECTORY=1" >> PCAPs-work-tS.sh
@@ -59,6 +41,23 @@ if [ "$?" == 0 ]; then
 else
     echo "TSHARK=$(which tshark)" >> PCAPs-work-tS.sh
 fi
+
+> .pcaps-no-sym
+for i in $(ls -1 $PCAPs|sed 's/\.pcap//'); do
+    if [ -L "$i.pcap" ]; then
+        echo "Not echoing the symlink:"
+        ls -l $i.pcap
+        echo "in the sanitized list."
+    else
+        echo $i.pcap >> .pcaps-no-sym
+    fi
+done
+cat .pcaps-no-sym
+echo "(cat .pcaps-no-sym)"
+ls -l .pcaps-no-sym
+read FAKE
+PCAPs=$(<.pcaps-no-sym)
+    
 
 # Split into two possible scripts, i.e. first only tStreams blocks, then only
 # tHostsConv blocks. It's important that these be separated, see comment at the
@@ -169,6 +168,9 @@ for i in $(ls -1 $PCAPs|sed 's/\.pcap//'); do
     echo fi >> PCAPs-work-tH.sh
     echo fi >> PCAPs-work-tH.sh
     echo cd \- >> PCAPs-work-tH.sh
+    echo "if [ ! -e \"${i}_conv-ip_l.txt\" ]; then" >> PCAPs-work-tH.sh
+    echo conv-ip_l.sh $i.pcap >> PCAPs-work-tH.sh
+    echo fi >> PCAPs-work-tH.sh
     echo fi >> PCAPs-work-tH.sh
     echo >> PCAPs-work-tH.sh
     # tshark-hosts-conv can run non-interactively and PCAPs-work-tH.sh can be run
@@ -177,6 +179,12 @@ done
 
 chmod 755 PCAPs-work-tH.sh
 chmod 755 PCAPs-work-tS.sh
+
+mv -iv Tmp.d/*-00_???.pcap .
+mv -iv Tmp.d/*_???.pcap .
+ls -l Tmp.d/
+rmdir -v Tmp.d/
+read NOP
 
 echo "There are two scripts that we created:"
 ls -l PCAPs-work-tH.sh PCAPs-work-tS.sh
