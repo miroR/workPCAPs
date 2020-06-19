@@ -17,6 +17,13 @@ function ask()    # this function borrowed from "Advanced BASH Scripting Guide"
 }
 
 . shark2use
+
+if [ $# -eq 0 ]; then
+    echo "give (a list of) PCAP(s)"
+    echo "(if globbing, you need to quote it, e.g.:"
+    echo "${0##*/} \"*.pcap\")"
+    exit 0
+fi
 #read NOP
 #read NOP
 PCAPs=$1
@@ -30,16 +37,44 @@ echo "ls -1 $PCAPs|sed 's/\.pcap//'|grep -v \"_rm-\|rm.pcap\|_tmp.pcap\""
 #read NOP
 ls -1 $PCAPs|grep -v "_rm-\|rm.pcap\|_tmp.pcap"|sed 's/\.pcap//'
 #read NOP
+
+hash=$(cksum $0|cut -d' ' -f1)
+ts="$(date +%s)"
+tsha="${ts}_${hash}"
+echo \$tsha: $tsha
+pcaps_no_sym=.pcaps-no-sym_${tsha}
+echo \$pcaps_no_sym: $pcaps_no_sym
+read NOP
+> $pcaps_no_sym
+ls -l $pcaps_no_sym
+read NOP
+for i in $(ls -1 $PCAPs|sed 's/\.pcap//'); do
+    if [ -L "$i.pcap" ]; then
+        echo "Not echoing the symlink:"
+        ls -l $i.pcap
+        echo "in the sanitized list."
+    else
+        echo $i.pcap >> $pcaps_no_sym
+    fi
+done
+cat $pcaps_no_sym
+echo "(cat $pcaps_no_sym)"
+ls -l $pcaps_no_sym
+read FAKE
+PCAPs=$(<$pcaps_no_sym)
+rm -v $pcaps_no_sym
+
+echo "Listing only:"
+for i in $(ls -1 $PCAPs|grep -v "_rm-\|rm.pcap\|_tmp.pcap"|sed 's/\.pcap//'); do
+    ls -l $i.pcap
+done
+echo "(Listing only)"
+read NOP
+    
 echo "=-=-=-=-=-=-=-=-=-=-=-= the first part: -=-=-=-=-=-=-==-=-=-=-="
 echo "==   creating the list of no-content tcp.streams, per PCAP  ==="
 echo "=-=-=-=-=-=-=-=-=-=-=-= (the first part) =-=-=-=-=-=-==-=-=-=-="
 #read NOP
-
-echo "Listing only first:"
-for i in $(ls -1 $PCAPs|grep -v "_rm-\|rm.pcap\|_tmp.pcap"|sed 's/\.pcap//'); do
-    ls -l $i.pcap
-done
-read NOP
 for i in $(ls -1 $PCAPs|grep -v "_rm-\|rm.pcap\|_tmp.pcap"|sed 's/\.pcap//'); do
     if [ -e "${i}_rm.pcap" ]; then
         echo "We exit."
