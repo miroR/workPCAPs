@@ -7,7 +7,6 @@
 #    tshark-hosts-conv.sh
 #    tshark-http-uri.sh
 #    tshark-streams.sh
-#    uncenz-2nd
 # to use the wireshark and its associates built from git sources when the
 # regular install is missing
 

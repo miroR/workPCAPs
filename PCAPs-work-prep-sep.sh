@@ -41,6 +41,12 @@ if [ "$?" == 0 ]; then
 else
     echo "TSHARK=$(which tshark)" >> PCAPs-work-tS.sh
 fi
+if [ -e ".tcpdu-PDUs-noTor" ]; then rm -v .tcpdu-PDUs-noTor; fi
+ask "These are non-tor PCAPs?"
+if [ "$?" == 0 ]; then
+    touch .tcpdu-PDUs-noTor
+    ls -l .tcpdu-PDUs-noTor 
+fi
 
 > .pcaps-no-sym
 for i in $(ls -1 $PCAPs|sed 's/\.pcap//'); do
@@ -96,15 +102,18 @@ done
 
 
 
-echo "For the PCAPs of your $1, issue:"
+echo "For the PCAPs of your $1, NOT issue:"
 echo "touch .non-interactive"
 echo "in the related dirs?"
-echo "( else, don't go anywhere, and keep replying"
+echo "( but then don't go anywhere, and keep replying"
 echo "to:"
 echo "*tshark-hosts-conv*"
 echo "querying you over options... )"
 ask
 if [ "$?" == 0 ]; then
+    echo "The session will be interactive."
+    echo "(and you were warned it would be with y/Y)"
+else
     for i in $(ls -1 $PCAPs|sed 's/\.pcap//'); do
         echo "if [ -e \"${i}.pcap\" ];  then" >> PCAPs-work-tH.sh
         echo "if [ ! -e  \"${i}_tHostsConv\" ];  then" >> PCAPs-work-tH.sh
@@ -142,7 +151,11 @@ for i in $(ls -1 $PCAPs|sed 's/\.pcap//'); do
     #echo "tshark-PDUs.sh ${i}_127.0.0.1.pcap" >> PCAPs-work-tH.sh
     #echo fi >> PCAPs-work-tH.sh
     echo "if [ -e \"${i}_127.0.0.1.pcap\" ]; then" >> PCAPs-work-tH.sh
-    echo "tcpdu-PDUs.sh ${i}_127.0.0.1.pcap" >> PCAPs-work-tH.sh    # 'tcpdu' for tcpdump
+    if [ -e ".tcpdu-PDUs-noTor" ]; then
+        echo "tcpdu-PDUs-noTor.sh ${i}_127.0.0.1.pcap" >> PCAPs-work-tH.sh    # 'tcpdu' for tcpdump
+    else
+        echo "tcpdu-PDUs.sh ${i}_127.0.0.1.pcap" >> PCAPs-work-tH.sh    # 'tcpdu' for tcpdump
+    fi
 
     # from PCAPs-msg-r-PDU.sh
     PCAP_FILE_loc=$(echo $i.pcap|sed 's/\.pcap/_127\.0\.0\.1\.pcap/')
@@ -162,9 +175,9 @@ for i in $(ls -1 $PCAPs|sed 's/\.pcap//'); do
     #read FAKE
     pcap_data=${PCAP_loc}_data.d
     echo \$pcap_data: $pcap_data
-    echo "mv -v ${pcap_data}_stamps-len ../" >> PCAPs-work-tH.sh
-    echo "mv -v $pcap_data ../" >> PCAPs-work-tH.sh
-    echo "mv -v ${pcap_data}_TEXT.ls-1 ../" >> PCAPs-work-tH.sh
+    #echo "mv -v ${pcap_data}_stamps-len ../" >> PCAPs-work-tH.sh
+    #echo "mv -v $pcap_data ../" >> PCAPs-work-tH.sh
+    #echo "mv -v ${pcap_data}_TEXT.ls-1 ../" >> PCAPs-work-tH.sh
     echo fi >> PCAPs-work-tH.sh
     echo fi >> PCAPs-work-tH.sh
     echo cd \- >> PCAPs-work-tH.sh
