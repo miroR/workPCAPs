@@ -1,4 +1,5 @@
-#!/bin/bash
+#
+# shark2use -- configure *shark commands to use
 #
 # At this time this script is source'd by:
 #    PCAPs-stream-clean.sh
@@ -9,6 +10,9 @@
 #    tshark-streams.sh
 # to use the wireshark and its associates built from git sources when the
 # regular install is missing
+#
+# Copyright (C) 2018,2021 Miroslav Rovis, <http://www.CroatiaFidelis.hr/>
+# Use this at your own risk!
 
 TEST_WIRESHARK=$(which wireshark)
 #echo \$TEST_WIRESHARK: $TEST_WIRESHARK
