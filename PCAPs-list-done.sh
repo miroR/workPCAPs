@@ -9,27 +9,40 @@ function ask()	# this function borrowed from "Advanced BASH Scripting Guide"
 	esac
 }
 
+export BLUE='\033[1;94m'
+export GREEN='\033[1;92m'
+export RED='\033[1;91m'
+export RESETCOLOR='\033[1;00m'
+
+if [ -n "$1" ]; then
+    tail_n=$1
+else
+    tail_n=3
+fi
+echo \$tail_n: $tail_n
+
+
 for i in $(ls -1 *.pcap | sed 's/\.pcap//'); do
 	if [ -e "${i}_tStreams" ]; then
 		if ( grep -q $i DONE ); then
 			echo -n "$i.pcap "
 		else
 			echo ;echo "=-=-=-=-=-=";ls -lL $i.pcap
-			tail -3 ${i}_tStreams/*streams.ls-1
-			ls -lLtr ${i}_tStreams/ | tail -3
+			tail -$tail_n ${i}_tStreams/*streams.ls-1
+			ls -lLtr ${i}_tStreams/ | tail -$tail_n
 			# $verif not yet (really) used
 			verif=$(ls -1tr ${i}_tStreams/ | tail -2|grep -v streams)
 			echo \$verif: $verif
 			echo "Probably DONE?"
 			ask
 			if [ "$?" == 0 ]
-				then echo $i.pcap >> DONE
+				then echo $i.pcap >> DONE; echo
 			fi
 		fi
 	else
-		echo -n "NPy: $i.pcap "
+		echo -e -n "$RED $i.pcap $RESETCOLOR"
 	fi
 done
-echo; echo "NPy="NOT processed yet" (if any)"
+echo; echo -e "Legend: $RED dump_....pcap $RESETCOLOR NOT processed yet (if any)."
 echo "=-=-=-=-=-="
 # vim: set tabstop=4 expandtab:
