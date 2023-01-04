@@ -181,6 +181,10 @@ for i in $(ls -1 $PCAPs|sed 's/\.pcap//'); do
     echo fi >> PCAPs-work-tH.sh
     echo fi >> PCAPs-work-tH.sh
     echo cd \- >> PCAPs-work-tH.sh
+    echo "if [ -e \"${i}_conv-ip_l.txt\" ] && [ ! -s \"${i}_conv-ip_l.txt\" ]; then" >> PCAPs-work-tH.sh
+    echo ls -l ${i}_conv-ip_l.txt >> PCAPs-work-tH.sh
+    echo rm -v ${i}_conv-ip_l.txt >> PCAPs-work-tH.sh
+    echo fi >> PCAPs-work-tH.sh >> PCAPs-work-tH.sh
     echo "if [ ! -e \"${i}_conv-ip_l.txt\" ]; then" >> PCAPs-work-tH.sh
     echo conv-ip_l.sh $i.pcap >> PCAPs-work-tH.sh
     echo fi >> PCAPs-work-tH.sh
