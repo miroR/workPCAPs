@@ -1,7 +1,8 @@
 #!/bin/bash
 #
-# see PCAPs-work-prep.sh, this is two scripts instead. Need it separate, as
-# tcpdump requires entering passphrase too often.
+# see PCAPs-work-prep.sh, this creates two scripts instead, PCAPs-work-tH.sh and
+# PCAPs-work-tS.sh. Need them separate, as tcpdump may require entering passphrase
+# too often with PCAPs-work-tH.sh.
 #
 
 function ask()    # this function borrowed from "Advanced BASH Scripting Guide"

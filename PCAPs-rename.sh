@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# PCAPs-rename.sh            rename PCAPs of the "-C 100" set (see uncenz-1st)
+# PCAPs-rename.sh            rename PCAPs of the "-C 300" set (see uncenz-1st)
 #
 
 hst=$1
