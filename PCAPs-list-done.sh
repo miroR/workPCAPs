@@ -44,16 +44,16 @@ for i in $(ls -1 *.pcap | sed 's/\.pcap//'); do
                 fi
                 tail -$tail_n ${i}_tStreams/${i}_streams.ls-1 | tr '\012' ' '; echo
                 ls -lLtr ${i}_tStreams/ | tail -$tail_n
-                if ( ls -1tr ${i}_tStreams/ | grep _streams_h2_EMPTY.ls-1 ); then
-                    num_ssl_h2=$(ls -1tr ${i}_tStreams/  | tail -n7 \
-                            | grep '\-ssl-h2-' | wc -l)
-                    echo \$num_ssl_h2: $num_ssl_h2
-                    if [ "$num_ssl_h2" -ge "3" ]; then
+                #if ( ls -1tr ${i}_tStreams/ | grep _streams_h2_EMPTY.ls-1 ); then
+                    num_tls_h2=$(ls -1tr ${i}_tStreams/  | tail -n7 \
+                            | grep '\-tls-h2-' | wc -l)
+                    echo \$num_tls_h2: $num_tls_h2
+                    if [ "$num_tls_h2" -ge "3" ]; then
                             ls -1tr ${i}_tStreams/ | grep -v '\.raw' | tail -n1 \
-                                | sed 's/.*_s\(.*\)-ssl-h2.*/\1/'
-                            ord_h2=$(ls -1tr ${i}_tStreams/ | grep '\-ssl-h2-' \
+                                | sed 's/.*_s\(.*\)-tls-h2.*/\1/'
+                            ord_h2=$(ls -1tr ${i}_tStreams/ | grep '\-tls-h2-' \
                                 | grep -v '\.raw' | tail -n1 \
-                                | sed 's/.*_s\(.*\)-ssl-h2.*/\1/')
+                                | sed 's/.*_s\(.*\)-tls-h2.*/\1/')
                             echo \$ord_h2: $ord_h2
                             echo "--==~==--"
                             tail -n2 ${i}_tStreams/${i}_s${ord_h2}_h2.ls-1 \
@@ -61,7 +61,7 @@ for i in $(ls -1 *.pcap | sed 's/\.pcap//'); do
                             echo "(tail -n2 ${i}_tStreams/${i}_s${ord_h2}_h2.ls-1)"
                             echo "--==~==--"
                     fi
-                fi
+                #fi
                 ask "Repeat?"
                 if [ "$?" == 0 ]; then 
                     echo will repeat
