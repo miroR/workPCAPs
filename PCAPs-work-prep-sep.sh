@@ -22,8 +22,8 @@ if [ $# -eq 0 ]; then
     exit 0
 fi
 
-PCAPs=$1
-echo \$PCAPs: $PCAPs
+PCAPs_raw=$1
+#echo \$PCAPs_raw: $PCAPs_raw
 
 ts=$(date +%s)
 for file in PCAPs-work-tH.sh PCAPs-work-tS.sh ; do
@@ -50,7 +50,7 @@ if [ "$?" == 0 ]; then
 fi
 
 > .pcaps-no-sym
-for i in $(ls -1 $PCAPs|sed 's/\.pcap//'); do
+for i in $(ls -1 $PCAPs_raw|sed 's/\.pcap//'); do
     if [ -L "$i.pcap" ]; then
         echo "Not echoing the symlink:"
         ls -l $i.pcap
@@ -63,7 +63,26 @@ cat .pcaps-no-sym
 echo "(cat .pcaps-no-sym)"
 ls -l .pcaps-no-sym
 read FAKE
-PCAPs=$(<.pcaps-no-sym)
+PCAPs_raw=$(<.pcaps-no-sym)
+for pcap in $PCAPs_raw; do
+    if [ ! -s "$pcap" ]; then
+        ls -l $pcap
+        echo $pcap >> .pcaps_empty
+        echo "(empty PCAP, will not be worked)"
+    else
+        echo $pcap >> .pcaps
+    fi
+done
+sort -u .pcaps-no-sym >  .pcaps-no-sym_sort-u
+cat .pcaps .pcaps_empty | sort -u >  .pcaps_sort-u
+if ( diff .pcaps-no-sym_sort-u .pcaps_sort-u ); then
+    : #echo All correct, sleep 3 just for debugging
+    #sleep 3
+else
+        echo "Error, pls. investigate!"
+fi
+PCAPs=$(<.pcaps)
+echo \$PCAPs: $PCAPs
     
 
 # Split into two possible scripts, i.e. first only tStreams blocks, then only
@@ -73,7 +92,7 @@ for i in $(ls -1 $PCAPs|sed 's/\.pcap//'); do
     # else it works on empty (PCAPs that are not yet started work on can be
     # removed any time from the dir without nuissance with this outer
     # condition)
-    # Tried, but it's more work, different that the include for other scripts:
+    # Tried, but it's more work, different than the include for other scripts:
     # . shark2use >> PCAPs-work-tS.sh
     echo "if [ -e \"${i}.pcap\" ];  then" >> PCAPs-work-tS.sh
     # setting up the tshark-streams dir to get working...
