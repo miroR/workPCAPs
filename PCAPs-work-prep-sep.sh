@@ -1,12 +1,13 @@
 #!/bin/bash
 #
-# see PCAPs-work-prep.sh, this creates two scripts instead, PCAPs-work-tH.sh and
-# PCAPs-work-tS.sh. Need them separate, as tcpdump may require entering passphrase
-# too often with PCAPs-work-tH.sh.
+# PCAPs-work-prep-sep.sh -- work captured network traces (PCAPs)
+#                           rewrite of now obsolete PCAPs-work-prep.sh
 #
+# Copyright (C) 2026 Miroslav Rovis, <https://www.CroatiaFidelis.hr/>
+#
+# released under BSD license, pls. see LICENSE, or assume  general BSD license
 
-function ask()    # this function borrowed from "Advanced BASH Scripting Guide"
-                # (a free book) by Mendel Cooper
+function ask()
 {
     echo -n "$@" '[y/[n]] ' ; read ans
     case "$ans" in
@@ -22,13 +23,15 @@ if [ $# -eq 0 ]; then
     exit 0
 fi
 
-PCAPs_raw=$1
-#echo \$PCAPs_raw: $PCAPs_raw
+PCAPs=( $1 )
+echo \$PCAPs: $PCAPs
+echo \$PCAPs[@]: ${PCAPs[@]}
+read NOP
 
 ts=$(date +%s)
 for file in PCAPs-work-tH.sh PCAPs-work-tS.sh ; do
     if [ -e "$file" ]; then
-        mv -v $file ${file}_$(date +%s)
+        mv -v $file ${file}.PREV
         > $file
     else
         > $file
@@ -42,53 +45,41 @@ if [ "$?" == 0 ]; then
 else
     echo "TSHARK=$(which tshark)" >> PCAPs-work-tS.sh
 fi
-if [ -e ".tcpdu-PDUs-noTor" ]; then rm -v .tcpdu-PDUs-noTor; fi
+unset tcpdu_PDUs_noTor
 ask "These are non-tor PCAPs?"
 if [ "$?" == 0 ]; then
-    touch .tcpdu-PDUs-noTor
-    ls -l .tcpdu-PDUs-noTor 
-fi
-
-> .pcaps-no-sym
-for i in $(ls -1 $PCAPs_raw|sed 's/\.pcap//'); do
-    if [ -L "$i.pcap" ]; then
-        echo "Not echoing the symlink:"
-        ls -l $i.pcap
-        echo "in the sanitized list."
-    else
-        echo $i.pcap >> .pcaps-no-sym
-    fi
-done
-cat .pcaps-no-sym
-echo "(cat .pcaps-no-sym)"
-ls -l .pcaps-no-sym
-read FAKE
-PCAPs_raw=$(<.pcaps-no-sym)
-for pcap in $PCAPs_raw; do
-    if [ ! -s "$pcap" ]; then
-        ls -l $pcap
-        echo $pcap >> .pcaps_empty
-        echo "(empty PCAP, will not be worked)"
-    else
-        echo $pcap >> .pcaps
-    fi
-done
-sort -u .pcaps-no-sym >  .pcaps-no-sym_sort-u
-cat .pcaps .pcaps_empty | sort -u >  .pcaps_sort-u
-if ( diff .pcaps-no-sym_sort-u .pcaps_sort-u ); then
-    : #echo All correct, sleep 3 just for debugging
-    #sleep 3
+    tcpdu_PDUs_noTor="y"
 else
-        echo "Error, pls. investigate!"
+    : # remains unset
 fi
-PCAPs=$(<.pcaps)
-echo \$PCAPs: $PCAPs
+echo \$tcpdu_PDUs_noTor: $tcpdu_PDUs_noTor
+read NOP
+
+for i in $(ls -1 ${PCAPs[ord]}|sed 's/\.pcap//'); do
+    if [ -L "$i.pcap" ]; then
+        echo "will be 'continue'ing in this one^s turn"
+        ls -l $i.pcap
+    fi
+done
+read NOP
     
 
 # Split into two possible scripts, i.e. first only tStreams blocks, then only
 # tHostsConv blocks. It's important that these be separated, see comment at the
 # very top.
-for i in $(ls -1 $PCAPs|sed 's/\.pcap//'); do
+for PCAP in ${PCAPs[@]}; do
+    echo $PCAP
+done
+read NOP
+for PCAP in ${PCAPs[@]}; do
+    i=$(echo $PCAP|sed 's/\.pcap//')
+    if [ -L "$i.pcap" ]; then
+        echo "Not working the symlinked PCAP:"
+        ls -l $i.pcap
+        echo "sleep 1 and 'continue'"
+        sleep 1
+        continue
+    fi
     # else it works on empty (PCAPs that are not yet started work on can be
     # removed any time from the dir without nuissance with this outer
     # condition)
@@ -135,7 +126,15 @@ if [ "$?" == 0 ]; then
     echo "The session will be interactive."
     echo "(and you were warned it would be with y/Y)"
 else
-    for i in $(ls -1 $PCAPs|sed 's/\.pcap//'); do
+    for PCAP in ${PCAPs[@]}; do
+        i=$(echo $PCAP|sed 's/\.pcap//')
+        if [ -L "$i.pcap" ]; then
+            echo "Not working the symlinked PCAP:"
+            ls -l $i.pcap
+            echo "sleep 1 and 'continue'"
+            sleep 1
+            continue
+        fi
         echo "if [ -e \"${i}.pcap\" ];  then" >> PCAPs-work-tH.sh
         echo "if [ ! -e  \"${i}_tHostsConv\" ];  then" >> PCAPs-work-tH.sh
         echo mkdir ${i}_tHostsConv >> PCAPs-work-tH.sh
@@ -148,7 +147,15 @@ else
 fi
 echo >> PCAPs-work-tH.sh
 
-for i in $(ls -1 $PCAPs|sed 's/\.pcap//'); do
+for PCAP in ${PCAPs[@]}; do
+    i=$(echo $PCAP|sed 's/\.pcap//')
+    if [ -L "$i.pcap" ]; then
+        echo "Not working the symlinked PCAP:"
+        ls -l $i.pcap
+        echo "sleep 1 and 'continue'"
+        sleep 1
+        continue
+    fi
     # setting up the tHostsConv dir to get working...
     # without -e $i.pcap it would run on empty (see similar condition for
     # tStreams above)...
@@ -172,33 +179,30 @@ for i in $(ls -1 $PCAPs|sed 's/\.pcap//'); do
     #echo "tshark-PDUs.sh ${i}_127.0.0.1.pcap" >> PCAPs-work-tH.sh
     #echo fi >> PCAPs-work-tH.sh
     echo "if [ -e \"${i}_127.0.0.1.pcap\" ]; then" >> PCAPs-work-tH.sh
-    if [ -e ".tcpdu-PDUs-noTor" ]; then
+    if [ -n "$tcpdu_PDUs_noTor" ]; then
         echo "tcpdu-PDUs-noTor.sh ${i}_127.0.0.1.pcap" >> PCAPs-work-tH.sh    # 'tcpdu' for tcpdump
     else
-        echo "tcpdu-PDUs.sh ${i}_127.0.0.1.pcap" >> PCAPs-work-tH.sh    # 'tcpdu' for tcpdump
+        echo "tcpdu-PDUs.sh ${i}_127.0.0.1.pcap" >> PCAPs-work-tH.sh
     fi
 
     # from PCAPs-msg-r-PDU.sh
     PCAP_FILE_loc=$(echo $i.pcap|sed 's/\.pcap/_127\.0\.0\.1\.pcap/')
     echo \$PCAP_FILE_loc: $PCAP_FILE_loc
-    #read FAKE
+    #read NOP
     num_dots=$(echo $PCAP_FILE_loc|sed 's/\./\n/g'| wc -l)
     num_dots_min_1=$(echo $num_dots - 1 | bc)
     echo \$num_dots_min_1: $num_dots_min_1
     ext=$(echo $PCAP_FILE_loc|cut -d. -f $num_dots)
     PCAP_loc=$(echo $PCAP_FILE_loc|sed "s/\(.*\)\.$ext/\1/")
     echo \$ext: $ext
-    #read FAKE
+    #read NOP
     echo \$PCAP_loc: $PCAP_loc
-    #read FAKE
+    #read NOP
     PCAP_FILE_loc=$PCAP_loc.$ext
     echo \$PCAP_FILE_loc: $PCAP_FILE_loc
-    #read FAKE
+    #read NOP
     pcap_data=${PCAP_loc}_data.d
     echo \$pcap_data: $pcap_data
-    #echo "mv -v ${pcap_data}_stamps-len ../" >> PCAPs-work-tH.sh
-    #echo "mv -v $pcap_data ../" >> PCAPs-work-tH.sh
-    #echo "mv -v ${pcap_data}_TEXT.ls-1 ../" >> PCAPs-work-tH.sh
     echo fi >> PCAPs-work-tH.sh
     echo fi >> PCAPs-work-tH.sh
     echo cd \- >> PCAPs-work-tH.sh
@@ -211,8 +215,15 @@ for i in $(ls -1 $PCAPs|sed 's/\.pcap//'); do
     echo fi >> PCAPs-work-tH.sh
     echo fi >> PCAPs-work-tH.sh
     echo >> PCAPs-work-tH.sh
-    # tshark-hosts-conv can run non-interactively and PCAPs-work-tH.sh can be run
-    # multiple instances in same directory where you place your PCAPs.
+done
+
+for file in PCAPs-work-tH.sh PCAPs-work-tS.sh ; do
+    if [ -e "$file.PREV" ]; then
+        if ( diff $file.PREV $file ); then
+            mv -v $file.PREV $file
+            echo "(the new $file was identical to old)"
+        fi
+    fi
 done
 
 chmod 755 PCAPs-work-tH.sh
@@ -226,5 +237,5 @@ read NOP
 
 echo "There are two scripts that we created:"
 ls -l PCAPs-work-tH.sh PCAPs-work-tS.sh
-read FAKE_permanent
+read NOP_permanent
 # vim: set tabstop=4 expandtab:    
